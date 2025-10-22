@@ -1,0 +1,142 @@
+import javafx.application.Application;
+ import javafx.scene.Scene;
+ import javafx.scene.control.*;
+ import javafx.scene.image.Image;
+ import javafx.scene.image.ImageView;
+ import javafx.scene.layout.*;
+ import javafx.stage.FileChooser;
+ import javafx.stage.Stage;
+ import java.io.BufferedWriter;
+ import java.io.File;
+ import java.io.FileWriter;
+ import java.io.IOException;
+ public class AdminApp extends Application {
+    private VBox vbox;
+    private TextField titleField;
+    private TextField authorField;
+    private String imagePath; // Keep track of the image path
+    private GridPane gridPane; // GridPane for book display
+    public static void main(String[] args) {
+        launch(args);
+    }
+    @Override
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("Library Management App");
+        titleField = new TextField();
+        authorField = new TextField();
+        Button addButton = new Button("Add Book");
+        Button deleteButton = new Button("Delete Book");
+        Button uploadImageButton = new Button("Upload Image");
+        gridPane = new GridPane(); // Initialize the GridPane
+        gridPane.setHgap(10);
+        gridPane.setVgap(10);
+        gridPane.setPrefWidth(400);
+        uploadImageButton.setOnAction(e -> uploadImage());
+        addButton.setOnAction(e -> addBook());
+        deleteButton.setOnAction(e -> deleteBook());
+        // Create an HBox for the buttons
+        HBox buttonBox = new HBox(10, uploadImageButton, addButton, deleteButton);
+        buttonBox.setAlignment(javafx.geometry.Pos.BASELINE_LEFT); 
+        vbox = new VBox(10, new Label("Title:"), titleField,
+ // Align buttons to the left
+                new Label("Author:"), authorField, buttonBox,gridPane); 
+// Remove image view from layout
+        Scene scene = new Scene(vbox, 500, 600);
+        primaryStage.setScene(scene);
+        primaryStage.show();
+ }
+    private void uploadImage() {
+        FileChooser fileChooser = new FileChooser();
+        File file = fileChooser.showOpenDialog(null);
+        if (file != null) {
+            imagePath = file.toURI().toString(); 
+// Set the image path without displaying the image
+        }
+    }
+    private void addBook() {
+        String title = titleField.getText();
+        String author = authorField.getText();
+        if (!title.isEmpty() && !author.isEmpty() && imagePath != null) {
+            Book book = new Book(title, author, imagePath);
+            if (!BookData.getBookList().contains(book)) {
+                BookData.addBook(book);
+                displayBooks(); // Update grid display
+                clearFields();
+                saveBooksToFile(); // Save books to file after adding
+            } else {
+                showAlert("Book already exists!");
+            }
+        } else {
+            showAlert("Please fill all fields!");
+        }
+    }
+    private void deleteBook() {
+        Book selectedBook = getSelectedBook();
+         if (selectedBook != null) {
+            BookData.removeBook(selectedBook);
+            displayBooks(); // Update grid display
+            saveBooksToFile(); // Save updated list after deletion
+        } else {
+            showAlert("Select a book to delete!");
+        }
+    }
+    private void clearFields() {
+        titleField.clear();
+        authorField.clear();
+        imagePath = null; // Reset image path
+    }
+    private void showAlert(String message) {
+ Alert alert = new Alert(Alert.AlertType.WARNING, message);
+        alert.showAndWait();
+    }
+    private void saveBooksToFile() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("books.txt"))) {
+            for (Book book : BookData.getBookList()) {
+                writer.write(book.getTitle() + "," + book.getAuthor() + "," + book.getImagePath());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+     private void displayBooks() {
+        gridPane.getChildren().clear(); 
+        int row = 0;
+        int col = 0;
+ // Clear existing books from the grid
+        for (Book book : BookData.getBookList()) {
+            ImageView imageView = new ImageView(new Image(book.getImagePath()));
+            imageView.setFitWidth(100);
+            imageView.setFitHeight(150);
+            // Modify to display title first, then "by" and then author
+ VBox bookInfo = new VBox(new Label(book.getTitle()), new Label("by " + 
+book.getAuthor()));
+            bookInfo.setStyle("-fx-alignment: center;");
+            // Create the book container with image and text
+ VBox bookContainer = new VBox(5, imageView, bookInfo);
+            bookContainer.setStyle("-fx-padding: 10; -fx-background-color: #f0f0f0; -fx-border-radius: 
+5; -fx-background-radius: 5;");
+            bookContainer.setOnMouseClicked(e -> {
+                // Logic to select a book for deletion
+                titleField.setText(book.getTitle());
+                authorField.setText(book.getAuthor());
+                imagePath = book.getImagePath();
+            });
+            gridPane.add(bookContainer, col, row);
+            col++;
+            if (col > 2) { // Adjust to the number of columns you want
+                col = 0;
+                row++;
+            }
+              }
+    }
+    private Book getSelectedBook() {
+        for (Book book : BookData.getBookList()) {
+            if (titleField.getText().equals(book.getTitle()) && 
+authorField.getText().equals(book.getAuthor())) {
+                return book;
+            }
+        }
+        return null;
+    }
+ }
